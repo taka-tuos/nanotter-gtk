@@ -1,0 +1,4 @@
+consumerKey       = ("Brbukpk7aHle3rIbSlpTvvleU")
+consumerSecret    = ("PcoimOIhAhwHVK3SZ0NlSifX8PLjBcLT90FnKaiL5vgzVHG1hK")
+accessToken       = ("2351289703-mBW1qMBVAewMYbWpZAK8cNmM2PKsFNf5utIBSAn")
+accessTokenSecret = ("pFf4iIBQiX429GCwkCekvNIaIvlh3gEAxvW46MTE7umJ1")
