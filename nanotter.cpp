@@ -41,6 +41,8 @@ void addTweetToTimeLine(char *name, char *screen_name, char *text)
 	GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
 	GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
 	
+	gtk_label_set_line_wrap(GTK_LABEL(label_text),true);
+	
 	gtk_box_pack_start(GTK_BOX(vbox), label_name, FALSE, FALSE, 0); 
 	gtk_box_pack_start(GTK_BOX(vbox), label_text, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(hbox), image, FALSE, FALSE, 0);
@@ -51,8 +53,15 @@ void addTweetToTimeLine(char *name, char *screen_name, char *text)
 	gtk_widget_set_valign(label_name, GTK_ALIGN_START);
 	gtk_widget_set_valign(label_text, GTK_ALIGN_START);
 	
-	gtk_box_pack_start(GTK_BOX(g_boxTimeline), hbox, FALSE, FALSE, 0);
+	gtk_label_set_line_wrap(GTK_LABEL(label_text), TRUE);
 	
+	//gtk_box_pack_start(GTK_BOX(g_boxTimeline), hbox, FALSE, FALSE, 0);
+	
+	//gtk_list_item_new();
+	
+	gtk_list_box_insert(GTK_LIST_BOX(g_boxTimeline), hbox, 0);
+	
+	gtk_widget_show_all(g_objWindow);
 	gtk_widget_show_all(g_boxTimeline);
 }
 
@@ -113,6 +122,14 @@ int apiStreamingCallback(char* ptr, size_t size, size_t nmemb, void* data) {
 	return realsize;
 }
 
+static void addSeparatorListBox(GtkListBoxRow *row, GtkListBoxRow *before, gpointer data)
+{
+	if (!before)
+		return;
+
+	gtk_list_box_row_set_header (row, gtk_separator_new (GTK_ORIENTATION_HORIZONTAL));
+}
+
 void* apiStreamingThread(void* pParam)
 {
 	g_twitterObj_Stream.timelineHomeGetStream(apiStreamingCallback);
@@ -152,7 +169,7 @@ int main(int argc, char *argv[])
 				GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 				gtk_widget_set_size_request(window, 320, 200);
 				
-				GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+				GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 20);
 				GtkWidget *label = gtk_label_new(NULL);
 				GtkWidget *button = gtk_button_new_with_label("OK");
 				GtkWidget *entry = gtk_entry_new();
@@ -183,7 +200,11 @@ int main(int argc, char *argv[])
 				
 				g_twitterObj.getOAuth().setOAuthPin(PIN);
 				
-				isValidPIN = g_twitterObj.oAuthAccessToken() && PIN.length();
+				string resp;
+			
+				g_twitterObj.getLastWebResponse(resp);
+				
+				isValidPIN = (strncmp(resp.c_str(),"oauth",5) == 0);
 				
 				if(isValidPIN && PIN.length()) {
 					ofstream newtoken(".nanotter");
@@ -233,7 +254,10 @@ int main(int argc, char *argv[])
 	
 	scroll_window = gtk_scrolled_window_new(NULL, NULL);
 	
-	g_boxTimeline = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+	g_boxTimeline = gtk_list_box_new();
+	
+	gtk_list_box_set_selection_mode(GTK_LIST_BOX(g_boxTimeline), GTK_SELECTION_NONE);
+	gtk_list_box_set_header_func (GTK_LIST_BOX(g_boxTimeline), addSeparatorListBox, NULL, NULL);
 	
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll_window), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	
