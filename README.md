@@ -13,17 +13,18 @@ libcurl
 libgtk3  
 
 ## ビルド時の注意
-twitcurlは付属のものを使ってください。
-(Streaming APIに独自対応(超乱暴)させてます)
+twitcurlは付属のものを使ってください。  
+(Streaming APIに独自対応(超乱暴)させてます)  
 
 ## ビルド方法
 $ git clone https://github.com/taka-tuos/nanotter.git  
-$ cd nanotter/litwitcurl  
+$ cd nanotter/libtwitcurl  
 $ make && sudo make install  
 $ cd ..  
 $ make  
 
 
 ## 今のところは
-ツイートとTL閲覧だけです。  
-ふぁぼふぁぼしたりリツイートしたりツイ消ししたりはできません。  
+ツイートとTL閲覧とふぁぼりつだけです。  
+ツイ消しとかブロックはできません。  
+またふぁぼ数とかも出ません。  
