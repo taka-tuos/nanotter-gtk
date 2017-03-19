@@ -6,6 +6,21 @@
 #include <locale.h>
 #include <pthread.h>
 #include <gtk/gtk.h>
+#include <malloc.h>
+#include <gdk-pixbuf/gdk-pixbuf.h>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
+typedef struct {
+	char *name;
+	char *screen_name;
+	char *text;
+	unsigned char *profile;
+	size_t len;
+} addTweet_t;
 
 using namespace std;
 
@@ -21,6 +36,8 @@ string g_strRequestTokenUrl;
 
 char *g_StreamBuffer = NULL;
 
+size_t g_curlDownloadPtr = 0;
+
 GtkWidget *g_boxTimeline;
 GtkWidget *g_boxTweet;
 GtkWidget *g_objWindow;
@@ -28,16 +45,95 @@ GtkWidget *g_objWindow;
 pthread_mutex_t g_objMutex;
 pthread_t g_objTid1;
 
-void addTweetToTimeLine(char *name, char *screen_name, char *text)
+int shaderAlphaMix(int c1, int c2, int alpha)
+{
+	int r, g, b;
+	int r1, g1, b1;
+	int r2, g2, b2;
+	int i = 2;
+	
+	r1 = c1 >> 16;
+	g1 = (c1 >> 8) & 0xff;
+	b1 = c1 & 0xff;
+	
+	r2 = c2 >> 16;
+	g2 = (c2 >> 8) & 0xff;
+	b2 = c2 & 0xff;
+	
+	r = (r2 * alpha + r1 * (255 - alpha)) / 255;
+	g = (g2 * alpha + g1 * (255 - alpha)) / 255;
+	b = (b2 * alpha + b1 * (255 - alpha)) / 255;
+	
+	if(r > 255) r = 255;
+	if(g > 255) g = 255;
+	if(b > 255) b = 255;
+	
+	
+	return (r << 16) | (g << 8) | b;
+}
+
+stbi_uc *renderAlphaNone(stbi_uc *bpp32, int w, int h)
+{
+	stbi_uc *bpp24 = (stbi_uc *)malloc(w*3*h);
+	
+	for(int y = 0; y < h; y++) {
+		for(int x = 0; x < w; x++) {
+			int di = (x + w * y) * 3;
+			int si = (x + w * y);
+			unsigned int src = ((unsigned int *)bpp32)[si];
+			
+			unsigned int dst = shaderAlphaMix(0xffffff, src & 0xffffff, src >> 24);
+			
+			int r1 = dst >> 16;
+			int g1 = (dst >> 8) & 0xff;
+			int b1 = dst & 0xff;
+			
+			bpp24[di+0] = b1;
+			bpp24[di+1] = g1;
+			bpp24[di+2] = r1;
+		}
+	}
+	
+	return bpp24;
+}
+
+GdkPixbuf *gdkLoadImage(const gchar *filename)
+{
+	GdkPixbuf *pixbuf;
+	GError *error = NULL;
+	
+	pixbuf = gdk_pixbuf_new_from_file(filename, &error);
+	
+	if (!pixbuf) {
+		fprintf(stderr, "%s\n", error->message);
+		g_error_free(error);
+	}
+	
+	return pixbuf;
+}
+
+void addTweetToTimeLine(addTweet_t tweet)
 {
 	char *final_name = (char *)malloc(512);
 	
-	sprintf(final_name, "%s (@%s)", name, screen_name);
+	sprintf(final_name, "%s (@%s)", tweet.name, tweet.screen_name);
 	
-	GtkWidget *image = gtk_image_new_from_file("profile.png");
+	int x,y,bpp;
+	
+	stbi_uc *dat = stbi_load_from_memory((stbi_uc *)tweet.profile,tweet.len,&x,&y,&bpp,4);
+	
+	stbi_uc *bpp24 = renderAlphaNone(dat,x,y);
+	
+	GdkPixbuf *pix = gdk_pixbuf_new_from_bytes(g_bytes_new(bpp24,malloc_usable_size(bpp24)),GDK_COLORSPACE_RGB,FALSE,8,x,y,x*3);
+	
+	GtkWidget *image = gtk_image_new_from_pixbuf(pix);
+	
+	stbi_write_png("SIGSEGV.png",x,y,3,bpp24,x*3);
+	
+	printf("x,y,bpp = %d,%d,%d\nstbi_uc = %p\nGdkPixbuf = %p\nGtkWidget = %p\n",x,y,bpp,dat,pix,image);
 	
 	GtkWidget *label_name = gtk_label_new(final_name);
-	GtkWidget *label_text = gtk_label_new(text);
+	GtkWidget *label_text = gtk_label_new(tweet.text);
 	GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
 	GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
 	
@@ -65,11 +161,71 @@ void addTweetToTimeLine(char *name, char *screen_name, char *text)
 	gtk_widget_show_all(g_boxTimeline);
 }
 
+size_t curlDownloadCallbackfunction(void *ptr, size_t size, size_t nmemb, void* userdata)
+{
+	char *stream = (char *)userdata;
+	if (!stream)
+	{
+		printf("!!! No stream\n");
+		return 0;
+	}
+
+	size_t written = size * nmemb;
+	memcpy(g_curlDownloadPtr + stream, ptr, written);
+	g_curlDownloadPtr += written;
+	return written;
+}
+
+bool curlDownloadFile(unsigned char *work, const char* url)
+{
+	CURL* curlCtx = curl_easy_init();
+	
+	g_curlDownloadPtr = 0;
+	
+	curl_easy_setopt(curlCtx, CURLOPT_URL, url);
+	curl_easy_setopt(curlCtx, CURLOPT_WRITEDATA, work);
+	curl_easy_setopt(curlCtx, CURLOPT_WRITEFUNCTION, curlDownloadCallbackfunction);
+	curl_easy_setopt(curlCtx, CURLOPT_FOLLOWLOCATION, 1);
+
+	CURLcode rc = curl_easy_perform(curlCtx);
+	if (rc)
+	{
+		printf("!!! Failed to download: %s\n", url);
+		return false;
+	}
+
+	long res_code = 0;
+	curl_easy_getinfo(curlCtx, CURLINFO_RESPONSE_CODE, &res_code);
+	if (!((res_code == 200 || res_code == 201) && rc != CURLE_ABORTED_BY_CALLBACK))
+	{
+		printf("!!! Response code: %ld\n", res_code);
+		return false;
+	}
+
+	curl_easy_cleanup(curlCtx);
+
+	return true;
+}
+
+unsigned long strGenerateHash(const char *sz)
+{
+	unsigned long r = 0, s = 0, t = 0;
+	size_t len = strlen(sz);
+	
+	for(;len;sz++,len--) {
+		r += *sz;
+		s ^= *sz << (t & 23);
+		r ^= s;
+	}
+	
+	return r << 32 | s;
+}
+
 void writeDataToTimeLine(char *str)
 {
 	struct json_object *obj = json_tokener_parse(str);
 	
-	struct json_object *text,*user,*name,*screen_name;
+	struct json_object *text,*user,*name,*screen_name,*profile_image_url;
 	json_object_object_get_ex(obj,"text",&text);
 	if(text) {
 		char *json_text,*json_name,*json_screen_name;
@@ -83,9 +239,25 @@ void writeDataToTimeLine(char *str)
 		
 		json_object_object_get_ex(user,"screen_name",&screen_name);
 		
+		json_object_object_get_ex(user,"profile_image_url",&profile_image_url);
+		
 		json_screen_name = (char *)json_object_get_string(screen_name);
 		
-		addTweetToTimeLine(json_name, json_screen_name, json_text);
+		unsigned char *work = (unsigned char *)malloc(65536);
+		
+		curlDownloadFile(work, json_object_get_string(profile_image_url));
+		
+		addTweet_t tweet;
+		
+		tweet.name = json_name;
+		tweet.screen_name = json_screen_name;
+		tweet.text = json_text;
+		tweet.profile = work;
+		tweet.len = g_curlDownloadPtr;
+		
+		addTweetToTimeLine(tweet);
+		
+		free(work);
 	}
 }
 
@@ -233,6 +405,7 @@ int main(int argc, char *argv[])
 	g_objWindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_widget_set_size_request(g_objWindow, 640, 480);
 	
+	
 	// TLを流す
 	
 	g_signal_connect(g_objWindow, "destroy", G_CALLBACK(gtk_main_quit), NULL);
@@ -241,22 +414,23 @@ int main(int argc, char *argv[])
 	gtk_window_set_title(GTK_WINDOW(g_objWindow), "nanotter");
 	gtk_container_set_border_width(GTK_CONTAINER(g_objWindow), 10);
 	
+	GdkPixbuf *icon = gdkLoadImage("res/logo.png");
+	gtk_window_set_icon(GTK_WINDOW(g_objWindow),icon);
+	
 	GtkWidget *vbox;
 	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
 	
 	gtk_container_add(GTK_CONTAINER(g_objWindow), vbox);
 	
 	GtkWidget *hbox;
-	
 	GtkWidget *button;
-	
 	GtkWidget *scroll_window;
 	
 	scroll_window = gtk_scrolled_window_new(NULL, NULL);
 	
 	g_boxTimeline = gtk_list_box_new();
 	
-	gtk_list_box_set_selection_mode(GTK_LIST_BOX(g_boxTimeline), GTK_SELECTION_NONE);
+	gtk_list_box_set_selection_mode(GTK_LIST_BOX(g_boxTimeline), GTK_SELECTION_SINGLE);
 	gtk_list_box_set_header_func (GTK_LIST_BOX(g_boxTimeline), addSeparatorListBox, NULL, NULL);
 	
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll_window), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
