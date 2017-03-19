@@ -1173,12 +1173,12 @@ bool twitCurl::favoriteCreate( const std::string& statusId )
 {
     /* Prepare URL */
     std::string buildUrl = twitCurlDefaults::TWITCURL_PROTOCOLS[m_eProtocolType] +
-                           twitterDefaults::TWITCURL_FAVORITECREATE_URL + statusId +
+                           twitterDefaults::TWITCURL_FAVORITECREATE_URL +
                            twitCurlDefaults::TWITCURL_EXTENSIONFORMATS[m_eApiFormatType];
 
     /* Send some dummy data in POST */
-    std::string dummyData = twitCurlDefaults::TWITCURL_TEXTSTRING +
-                            urlencode( std::string( "dummy" ) );
+    std::string dummyData = "id=" +
+                            urlencode( statusId );
 
     /* Perform POST */
     return performPost( buildUrl, dummyData );
@@ -1199,11 +1199,15 @@ bool twitCurl::favoriteDestroy( const std::string& statusId )
 {
     /* Prepare URL */
     std::string buildUrl = twitCurlDefaults::TWITCURL_PROTOCOLS[m_eProtocolType] +
-                           twitterDefaults::TWITCURL_FAVORITEDESTROY_URL + statusId +
+                           twitterDefaults::TWITCURL_FAVORITEDESTROY_URL +
                            twitCurlDefaults::TWITCURL_EXTENSIONFORMATS[m_eApiFormatType];
+    
+    /* Send some dummy data in POST */
+    std::string dummyData = "id=" +
+                            urlencode( statusId );
 
     /* Perform DELETE */
-    return performDelete( buildUrl );
+    return performPost( buildUrl, dummyData );
 }
 
 /*++
@@ -1221,12 +1225,12 @@ bool twitCurl::blockCreate( const std::string& userInfo )
 {
         /* Prepare URL */
         std::string buildUrl = twitCurlDefaults::TWITCURL_PROTOCOLS[m_eProtocolType] +
-                               twitterDefaults::TWITCURL_BLOCKSCREATE_URL + userInfo +
+                               twitterDefaults::TWITCURL_BLOCKSCREATE_URL  +
                                twitCurlDefaults::TWITCURL_EXTENSIONFORMATS[m_eApiFormatType];
 
         /* Send some dummy data in POST */
-        std::string dummyData = twitCurlDefaults::TWITCURL_TEXTSTRING +
-                                urlencode( std::string( "dummy" ) );
+        std::string dummyData = "user_id=" +
+                                urlencode( userInfo );
 
         /* Perform POST */
         return performPost( buildUrl, dummyData );
@@ -1247,11 +1251,15 @@ bool twitCurl::blockDestroy( const std::string& userInfo )
 {
     /* Prepare URL */
     std::string buildUrl = twitCurlDefaults::TWITCURL_PROTOCOLS[m_eProtocolType] +
-                           twitterDefaults::TWITCURL_BLOCKSDESTROY_URL + userInfo +
+                           twitterDefaults::TWITCURL_BLOCKSDESTROY_URL +
                            twitCurlDefaults::TWITCURL_EXTENSIONFORMATS[m_eApiFormatType];
 
-    /* Perform DELETE */
-    return performDelete( buildUrl );
+    /* Send some dummy data in POST */
+	std::string dummyData = "user_id=" +
+							urlencode( userInfo );
+
+	/* Perform POST */
+	return performPost( buildUrl, dummyData );
 }
 
 /*++

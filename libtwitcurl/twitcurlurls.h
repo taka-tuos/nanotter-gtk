@@ -54,9 +54,9 @@ namespace twitterDefaults
 
     /* Status URLs */
     const std::string TWITCURL_STATUSUPDATE_URL = TWITCURL_BASE_URL + "statuses/update";
-    const std::string TWITCURL_STATUSSHOW_URL = TWITCURL_BASE_URL + "statuses/show/";
-    const std::string TWITCURL_STATUDESTROY_URL = TWITCURL_BASE_URL + "statuses/destroy/";
-    const std::string TWITCURL_RETWEET_URL = TWITCURL_BASE_URL + "statuses/retweet/";
+    const std::string TWITCURL_STATUSSHOW_URL = TWITCURL_BASE_URL + "statuses/show";
+    const std::string TWITCURL_STATUDESTROY_URL = TWITCURL_BASE_URL + "statuses/destroy";
+    const std::string TWITCURL_RETWEET_URL = TWITCURL_BASE_URL + "statuses/retweet";
 
     /* Timeline URLs */
     const std::string TWITCURL_HOME_TIMELINE_URL = TWITCURL_BASE_URL + "statuses/home_timeline";
@@ -76,7 +76,7 @@ namespace twitterDefaults
     const std::string TWITCURL_DIRECTMESSAGES_URL = TWITCURL_BASE_URL + "direct_messages";
     const std::string TWITCURL_DIRECTMESSAGENEW_URL = TWITCURL_BASE_URL + "direct_messages/new";
     const std::string TWITCURL_DIRECTMESSAGESSENT_URL = TWITCURL_BASE_URL + "direct_messages/sent";
-    const std::string TWITCURL_DIRECTMESSAGEDESTROY_URL = TWITCURL_BASE_URL + "direct_messages/destroy/";
+    const std::string TWITCURL_DIRECTMESSAGEDESTROY_URL = TWITCURL_BASE_URL + "direct_messages/destroy";
 
     /* Friendships URLs */
     const std::string TWITCURL_FRIENDSHIPSCREATE_URL = TWITCURL_BASE_URL + "friendships/create";
@@ -93,20 +93,20 @@ namespace twitterDefaults
 
     /* Favorites URLs */
     const std::string TWITCURL_FAVORITESGET_URL = TWITCURL_BASE_URL + "favorites";
-    const std::string TWITCURL_FAVORITECREATE_URL = TWITCURL_BASE_URL + "favorites/create/";
-    const std::string TWITCURL_FAVORITEDESTROY_URL = TWITCURL_BASE_URL + "favorites/destroy/";
+    const std::string TWITCURL_FAVORITECREATE_URL = TWITCURL_BASE_URL + "favorites/create";
+    const std::string TWITCURL_FAVORITEDESTROY_URL = TWITCURL_BASE_URL + "favorites/destroy";
 
     /* Block URLs */
-    const std::string TWITCURL_BLOCKSCREATE_URL = TWITCURL_BASE_URL + "blocks/create/";
-    const std::string TWITCURL_BLOCKSDESTROY_URL = TWITCURL_BASE_URL + "blocks/destroy/";
+    const std::string TWITCURL_BLOCKSCREATE_URL = TWITCURL_BASE_URL + "blocks/create";
+    const std::string TWITCURL_BLOCKSDESTROY_URL = TWITCURL_BASE_URL + "blocks/destroy";
     const std::string TWITCURL_BLOCKSLIST_URL = TWITCURL_BASE_URL + "blocks/list";
     const std::string TWITCURL_BLOCKSIDS_URL = TWITCURL_BASE_URL + "blocks/ids";
 
     /* Saved Search URLs */
     const std::string TWITCURL_SAVEDSEARCHGET_URL = TWITCURL_BASE_URL + "saved_searches";
-    const std::string TWITCURL_SAVEDSEARCHSHOW_URL = TWITCURL_BASE_URL + "saved_searches/show/";
+    const std::string TWITCURL_SAVEDSEARCHSHOW_URL = TWITCURL_BASE_URL + "saved_searches/show";
     const std::string TWITCURL_SAVEDSEARCHCREATE_URL = TWITCURL_BASE_URL + "saved_searches/create";
-    const std::string TWITCURL_SAVEDSEARCHDESTROY_URL = TWITCURL_BASE_URL + "saved_searches/destroy/";
+    const std::string TWITCURL_SAVEDSEARCHDESTROY_URL = TWITCURL_BASE_URL + "saved_searches/destroy";
 
     /* Trends URLs */
     const std::string TWITCURL_TRENDS_URL = TWITCURL_BASE_URL + "trends";

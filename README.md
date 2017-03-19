@@ -18,7 +18,7 @@ twitcurlは付属のものを使ってください。
 
 ## ビルド方法
 $ git clone https://github.com/taka-tuos/nanotter.git  
-$ cd nanotter/twitcurl  
+$ cd nanotter/litwitcurl  
 $ make && sudo make install  
 $ cd ..  
 $ make  

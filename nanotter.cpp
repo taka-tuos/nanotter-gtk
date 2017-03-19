@@ -19,6 +19,7 @@ typedef struct {
 	char *screen_name;
 	char *text;
 	unsigned char *profile;
+	uint64_t id;
 	size_t len;
 } addTweet_t;
 
@@ -44,6 +45,11 @@ GtkWidget *g_objWindow;
 
 pthread_mutex_t g_objMutex;
 pthread_t g_objTid1;
+
+uint64_t g_idSelectedTL = 0;
+
+uint64_t *g_arrayIdDListTL = NULL;
+size_t g_arrayIdDListMax = 0;
 
 int shaderAlphaMix(int c1, int c2, int alpha)
 {
@@ -112,8 +118,55 @@ GdkPixbuf *gdkLoadImage(const gchar *filename)
 	return pixbuf;
 }
 
+void timelienDoFavFav(GtkMenuItem *menuitem, gpointer user_data)
+{
+	ostringstream o;
+	o << g_idSelectedTL;
+	g_twitterObj.favoriteCreate(o.str());
+	
+	string resp;
+	
+	g_twitterObj.getLastWebResponse(resp);
+	
+	cout << resp << endl;
+}
+
+int timelineShowPopUp(GtkWidget *widget, GdkEvent *event)
+{
+	
+	const gint RIGHT_CLICK = 3;
+		
+	if (event->type == GDK_BUTTON_PRESS) {
+		GdkEventButton *bevent = (GdkEventButton *) event;
+		
+		if (bevent->button == RIGHT_CLICK) {      
+			gtk_menu_popup(GTK_MENU(widget), NULL, NULL, NULL, NULL, bevent->button, bevent->time);
+		}
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+void timelineDetachMenu(GtkWidget *attach_widget, GtkMenu *menu)
+{
+	return;
+}
+
+void timelineSelectedCallback(GtkListBox *box, GtkListBoxRow *row, gpointer id)
+{
+	int ind = gtk_list_box_row_get_index(row);
+	
+	g_idSelectedTL = g_arrayIdDListTL[(g_arrayIdDListMax-1) - ind];
+	printf("id : %ld\n", g_idSelectedTL);
+}
+
 void addTweetToTimeLine(addTweet_t tweet)
 {
+	g_arrayIdDListTL = (uint64_t *)realloc(g_arrayIdDListTL,g_arrayIdDListMax*8);
+	g_arrayIdDListTL[g_arrayIdDListMax] = tweet.id;
+	g_arrayIdDListMax++;
+	
 	char *final_name = (char *)malloc(512);
 	
 	sprintf(final_name, "%s (@%s)", tweet.name, tweet.screen_name);
@@ -126,11 +179,11 @@ void addTweetToTimeLine(addTweet_t tweet)
 	
 	GdkPixbuf *pix = gdk_pixbuf_new_from_bytes(g_bytes_new(bpp24,malloc_usable_size(bpp24)),GDK_COLORSPACE_RGB,FALSE,8,x,y,x*3);
 	
-	GtkWidget *image = gtk_image_new_from_pixbuf(pix);
+	GtkWidget *image = /*gtk_image_new_from_file("profile.png");*/gtk_image_new_from_pixbuf(pix);
 	
 	stbi_write_png("SIGSEGV.png",x,y,3,bpp24,x*3);
 	
-	printf("x,y,bpp = %d,%d,%d\nstbi_uc = %p\nGdkPixbuf = %p\nGtkWidget = %p\n",x,y,bpp,dat,pix,image);
+	printf("x,y,bpp = %d,%d,%d\nstbi_uc = %p\nbpp24 = %p\nGdkPixbuf = %p\nGtkWidget = %p\n",x,y,bpp,dat,bpp24,pix,image);
 	
 	GtkWidget *label_name = gtk_label_new(final_name);
 	GtkWidget *label_text = gtk_label_new(tweet.text);
@@ -156,6 +209,8 @@ void addTweetToTimeLine(addTweet_t tweet)
 	//gtk_list_item_new();
 	
 	gtk_list_box_insert(GTK_LIST_BOX(g_boxTimeline), hbox, 0);
+	
+	g_signal_connect(G_OBJECT(g_boxTimeline), "row-selected", G_CALLBACK(timelineSelectedCallback), NULL);
 	
 	gtk_widget_show_all(g_objWindow);
 	gtk_widget_show_all(g_boxTimeline);
@@ -225,14 +280,18 @@ void writeDataToTimeLine(char *str)
 {
 	struct json_object *obj = json_tokener_parse(str);
 	
-	struct json_object *text,*user,*name,*screen_name,*profile_image_url;
+	struct json_object *text,*user,*name,*screen_name,*profile_image_url,*id;
 	json_object_object_get_ex(obj,"text",&text);
 	if(text) {
 		char *json_text,*json_name,*json_screen_name;
+		int64_t json_id;
 		
 		json_text = (char *)json_object_get_string(text);
 		
 		json_object_object_get_ex(obj,"user",&user);
+		
+		json_object_object_get_ex(obj,"id",&id);
+		json_id = json_object_get_int64(id);
 		
 		json_object_object_get_ex(user,"name",&name);
 		json_name = (char *)json_object_get_string(name);
@@ -254,6 +313,7 @@ void writeDataToTimeLine(char *str)
 		tweet.text = json_text;
 		tweet.profile = work;
 		tweet.len = g_curlDownloadPtr;
+		tweet.id = json_id;
 		
 		addTweetToTimeLine(tweet);
 		
@@ -378,7 +438,7 @@ int main(int argc, char *argv[])
 				
 				isValidPIN = (strncmp(resp.c_str(),"oauth",5) == 0);
 				
-				if(isValidPIN && PIN.length()) {
+				if(isValidPIN) {
 					ofstream newtoken(".nanotter");
 					
 					g_twitterObj.getOAuth().getOAuthTokenKey(token);
@@ -448,6 +508,20 @@ int main(int argc, char *argv[])
 	
 	gtk_box_pack_start(GTK_BOX(vbox), scroll_window, TRUE, TRUE, 0); 
 	g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(clickedTweetButton), NULL);
+	
+	
+	GtkWidget *pmenu;
+	GtkWidget *favMi;
+	
+	pmenu = gtk_menu_new();
+	
+	favMi = gtk_menu_item_new_with_label("ふぁぼふぁぼする");
+	gtk_widget_show(favMi);
+	gtk_menu_shell_append(GTK_MENU_SHELL(pmenu), favMi);
+	
+	//gtk_menu_attach_to_widget(GTK_MENU(pmenu), g_boxTimeline, timelineDetachMenu);
+	g_signal_connect_swapped(G_OBJECT(scroll_window), "button-press-event", G_CALLBACK(timelineShowPopUp), pmenu);
+	g_signal_connect(G_OBJECT(favMi), "activate", G_CALLBACK(timelienDoFavFav), NULL);
 	
 	gtk_widget_show_all(g_objWindow);
 	
