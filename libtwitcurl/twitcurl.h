@@ -53,6 +53,7 @@ public:
     bool statusShowById( const std::string& statusId /* in */ );
     bool statusDestroyById( const std::string& statusId /* in */ );
     bool retweetById( const std::string& statusId /* in */ );
+    bool unretweetById( const std::string& statusId /* in */ );
 
     /* Twitter timeline APIs */
     bool timelineHomeGet( const std::string sinceId = ""  /* in */ );

@@ -103,6 +103,37 @@ stbi_uc *renderAlphaNone(stbi_uc *bpp32, int w, int h)
 	return bpp24;
 }
 
+void apiCheckAndDisplayError()
+{
+	string json;
+	
+	g_twitterObj.getLastWebResponse(json);
+	
+	struct json_object *obj = json_tokener_parse(json.c_str());
+	struct json_object *errors;
+	json_object_object_get_ex(obj,"errors",&errors);
+	
+	if(errors) {
+		for (int i = 0; i < json_object_array_length(errors); ++i) {
+			struct json_object *ctx = json_object_array_get_idx(errors, i);
+			struct json_object *message, *code;
+			
+			json_object_object_get_ex(ctx,"message",&message);
+			json_object_object_get_ex(ctx,"code",&code);
+			
+			char *json_message = (char *)json_object_get_string(message);
+			int json_code = json_object_get_int(code);
+			
+			GtkWidget *messagedialog;
+			
+			messagedialog = gtk_message_dialog_new(GTK_WINDOW(g_objWindow), GTK_DIALOG_MODAL, GTK_MESSAGE_ERROR, GTK_BUTTONS_OK, "Error\n%s\n Code : %d",json_message,json_code);
+
+			gtk_dialog_run(GTK_DIALOG(messagedialog));
+			gtk_widget_destroy(messagedialog);
+		}
+	}
+}
+
 GdkPixbuf *gdkLoadImage(const gchar *filename)
 {
 	GdkPixbuf *pixbuf;
@@ -127,6 +158,53 @@ void timelienDoFavFav(GtkMenuItem *menuitem, gpointer user_data)
 	string resp;
 	
 	g_twitterObj.getLastWebResponse(resp);
+	
+	apiCheckAndDisplayError();
+	
+	cout << resp << endl;
+}
+
+void timelienDoUnFavFav(GtkMenuItem *menuitem, gpointer user_data)
+{
+	ostringstream o;
+	o << g_idSelectedTL;
+	g_twitterObj.favoriteDestroy(o.str());
+	
+	string resp;
+	
+	g_twitterObj.getLastWebResponse(resp);
+	
+	apiCheckAndDisplayError();
+	
+	cout << resp << endl;
+}
+
+void timelienDoRetweet(GtkMenuItem *menuitem, gpointer user_data)
+{
+	ostringstream o;
+	o << g_idSelectedTL;
+	g_twitterObj.retweetById("a");
+	
+	string resp;
+	
+	g_twitterObj.getLastWebResponse(resp);
+	
+	apiCheckAndDisplayError();
+	
+	cout << resp << endl;
+}
+
+void timelienDoUnRetweet(GtkMenuItem *menuitem, gpointer user_data)
+{
+	ostringstream o;
+	o << g_idSelectedTL;
+	g_twitterObj.unretweetById(o.str());
+	
+	string resp;
+	
+	g_twitterObj.getLastWebResponse(resp);
+	
+	apiCheckAndDisplayError();
 	
 	cout << resp << endl;
 }
@@ -161,6 +239,41 @@ void timelineSelectedCallback(GtkListBox *box, GtkListBoxRow *row, gpointer id)
 	printf("id : %ld\n", g_idSelectedTL);
 }
 
+char *encodeMarkupText(char *s)
+{
+	string str = "";
+	string uri = "";
+	int mode = 0;
+	while(*s) {
+		if(strncmp(s,"http",4) == 0) {
+			mode = 1;
+			str += "<a href=\"";
+		}
+		
+		if(mode) uri += *s;
+		
+		if(*s == 0x0d || *s == 0x0a || *s == ' ') {
+			if(mode) {
+				mode = 0;
+				str += "\">" + uri + "</a>";
+				uri = "";
+			}
+		}
+		str += *s;
+		s++;
+	}
+	
+	if(mode) str += "\">" + uri + "</a>";
+	
+	cout << str << endl;
+	
+	char *ret = (char *)malloc(512);
+	
+	strcpy(ret,str.c_str());
+	
+	return ret;
+}
+
 void addTweetToTimeLine(addTweet_t tweet)
 {
 	g_arrayIdDListTL = (uint64_t *)realloc(g_arrayIdDListTL,g_arrayIdDListMax*8);
@@ -186,9 +299,13 @@ void addTweetToTimeLine(addTweet_t tweet)
 	printf("x,y,bpp = %d,%d,%d\nstbi_uc = %p\nbpp24 = %p\nGdkPixbuf = %p\nGtkWidget = %p\n",x,y,bpp,dat,bpp24,pix,image);
 	
 	GtkWidget *label_name = gtk_label_new(final_name);
-	GtkWidget *label_text = gtk_label_new(tweet.text);
+	GtkWidget *label_text = gtk_label_new(NULL);
 	GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 2);
 	GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+	
+	gtk_label_set_use_markup(GTK_LABEL(label_text),TRUE);
+	
+	gtk_label_set_label(GTK_LABEL(label_text), encodeMarkupText(tweet.text));
 	
 	gtk_label_set_line_wrap(GTK_LABEL(label_text),true);
 	
@@ -379,6 +496,8 @@ char *getTextofTextview(GtkWidget *text_view) {
 static void clickedTweetButton(GtkWidget *button, gpointer user_data)
 {
 	g_twitterObj.statusUpdate(getTextofTextview(g_boxTweet));
+	
+	apiCheckAndDisplayError();
 }
 
 int main(int argc, char *argv[])
@@ -511,7 +630,7 @@ int main(int argc, char *argv[])
 	
 	
 	GtkWidget *pmenu;
-	GtkWidget *favMi;
+	GtkWidget *favMi,*retMi,*unfavMi,*unretMi;
 	
 	pmenu = gtk_menu_new();
 	
@@ -519,9 +638,24 @@ int main(int argc, char *argv[])
 	gtk_widget_show(favMi);
 	gtk_menu_shell_append(GTK_MENU_SHELL(pmenu), favMi);
 	
+	unfavMi = gtk_menu_item_new_with_label("あんふぁぼ");
+	gtk_widget_show(unfavMi);
+	gtk_menu_shell_append(GTK_MENU_SHELL(pmenu), unfavMi);
+	
+	retMi = gtk_menu_item_new_with_label("りつりつする");
+	gtk_widget_show(retMi);
+	gtk_menu_shell_append(GTK_MENU_SHELL(pmenu), retMi);
+	
+	unretMi = gtk_menu_item_new_with_label("あんりつ");
+	gtk_widget_show(unretMi);
+	gtk_menu_shell_append(GTK_MENU_SHELL(pmenu), unretMi);
+	
 	//gtk_menu_attach_to_widget(GTK_MENU(pmenu), g_boxTimeline, timelineDetachMenu);
 	g_signal_connect_swapped(G_OBJECT(scroll_window), "button-press-event", G_CALLBACK(timelineShowPopUp), pmenu);
-	g_signal_connect(G_OBJECT(favMi), "activate", G_CALLBACK(timelienDoFavFav), NULL);
+	g_signal_connect_swapped(G_OBJECT(favMi), "activate", G_CALLBACK(timelienDoFavFav), NULL);
+	g_signal_connect_swapped(G_OBJECT(unfavMi), "activate", G_CALLBACK(timelienDoUnFavFav), NULL);
+	g_signal_connect_swapped(G_OBJECT(retMi), "activate", G_CALLBACK(timelienDoRetweet), NULL);
+	g_signal_connect_swapped(G_OBJECT(unretMi), "activate", G_CALLBACK(timelienDoUnRetweet), NULL);
 	
 	gtk_widget_show_all(g_objWindow);
 	

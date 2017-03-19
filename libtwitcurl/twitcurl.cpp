@@ -516,8 +516,39 @@ bool twitCurl::retweetById( const std::string& statusId )
                            twitCurlDefaults::TWITCURL_EXTENSIONFORMATS[m_eApiFormatType];
 
     /* Send some dummy data in POST */
-    std::string dummyData = twitCurlDefaults::TWITCURL_TEXTSTRING +
-                            urlencode( std::string( "dummy" ) );
+    std::string dummyData = "id=" +
+                            urlencode( statusId );
+
+    /* Perform Retweet */
+    return performPost( buildUrl, dummyData );
+}
+
+/*++
+* @method: twitCurl::unretweetById
+*
+* @description: method to UNRETWEET a status message by its id
+*
+* @input: statusId - a number in std::string format
+*
+* @output: true if UNRETWEET is success, otherwise false. This does not check http
+*          response by twitter. Use getLastWebResponse() for that.
+*
+*--*/
+bool twitCurl::unretweetById( const std::string& statusId )
+{
+    if( statusId.empty() )
+    {
+        return false;
+    }
+
+    /* Prepare URL */
+    std::string buildUrl = twitCurlDefaults::TWITCURL_PROTOCOLS[m_eProtocolType] +
+                           twitterDefaults::TWITCURL_UNRETWEET_URL + statusId +
+                           twitCurlDefaults::TWITCURL_EXTENSIONFORMATS[m_eApiFormatType];
+
+    /* Send some dummy data in POST */
+    std::string dummyData = "id=" +
+                            urlencode( statusId );
 
     /* Perform Retweet */
     return performPost( buildUrl, dummyData );
