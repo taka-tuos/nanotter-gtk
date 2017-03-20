@@ -1,5 +1,5 @@
 TARGET		= nanotter
-OBJS_TARGET	= $(TARGET).o
+OBJS_TARGET	= $(TARGET).o api.o timeline.o gtk.o curl.o misc.o
 
 CFLAGS = -O0 -g -fpermissive `pkg-config --cflags gtk+-3.0`
 LDFLAGS = 
