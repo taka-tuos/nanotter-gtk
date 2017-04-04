@@ -145,76 +145,71 @@ void apiOAuthTokenPIN()
 	string token,tokensecret;
 	
 	// PINとかそのへんの処理
-	{
-		ifstream tokenfile(".nanotter");
+	ifstream tokenfile(".nanotter");
+	
+	if(tokenfile.fail()) {
+		g_twitterObj.oAuthRequestToken(g_strRequestTokenUrl);
+		bool isValidPIN = false;
+		while(isValidPIN == false) {
+			GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+			gtk_widget_set_size_request(window, 320, 200);
+			
+			GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 20);
+			GtkWidget *label = gtk_label_new(NULL);
+			GtkWidget *button = gtk_button_new_with_label("OK");
+			GtkWidget *entry = gtk_entry_new();
+			
+			string uri = "以下のページにアクセスして、\n"
+						"表示されたPINコードを入力してください。\n"
+						"<a href=\"" + 
+						g_strRequestTokenUrl + 
+						"\">連携アプリ設定ページ</a>";
+			gtk_label_set_markup (GTK_LABEL(label), uri.c_str());
+			
+			gtk_box_pack_start(GTK_BOX(vbox), label, TRUE, TRUE, 0);
+			gtk_box_pack_start(GTK_BOX(vbox), entry, TRUE, TRUE, 0);
+			gtk_box_pack_start(GTK_BOX(vbox), button, TRUE, TRUE, 0);
+			
+			gtk_container_add(GTK_CONTAINER(window), vbox);
+			
+			g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(gtk_main_quit), NULL);
+			g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
+			
+			gtk_widget_show_all(window);
+			
+			gtk_main();
+			
+			gtk_window_close(GTK_WINDOW(window));
+			
+			string PIN = (char *)gtk_entry_get_text(GTK_ENTRY(entry));
+			
+			g_twitterObj.getOAuth().setOAuthPin(PIN);
+			
+			string resp;
 		
-		if(tokenfile.fail()) {
-			g_twitterObj.oAuthRequestToken(g_strRequestTokenUrl);
-			bool isValidPIN = false;
-			while(isValidPIN == false) {
-				GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-				gtk_widget_set_size_request(window, 320, 200);
-				
-				GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 20);
-				GtkWidget *label = gtk_label_new(NULL);
-				GtkWidget *button = gtk_button_new_with_label("OK");
-				GtkWidget *entry = gtk_entry_new();
-				
-				string uri = "以下のページにアクセスして、\n"
-							"表示されたPINコードを入力してください。\n"
-							"<a href=\"" + 
-							g_strRequestTokenUrl + 
-							"\">連携アプリ設定ページ</a>";
-				gtk_label_set_markup (GTK_LABEL(label), uri.c_str());
-				
-				gtk_box_pack_start(GTK_BOX(vbox), label, TRUE, TRUE, 0);
-				gtk_box_pack_start(GTK_BOX(vbox), entry, TRUE, TRUE, 0);
-				gtk_box_pack_start(GTK_BOX(vbox), button, TRUE, TRUE, 0);
-				
-				gtk_container_add(GTK_CONTAINER(window), vbox);
-				
-				g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(gtk_main_quit), NULL);
-				g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-				
-				gtk_widget_show_all(window);
-				
-				gtk_main();
-				
-				gtk_window_close(GTK_WINDOW(window));
-				
-				string PIN = (char *)gtk_entry_get_text(GTK_ENTRY(entry));
-				
-				g_twitterObj.getOAuth().setOAuthPin(PIN);
-				
-				string resp;
+			g_twitterObj.getLastWebResponse(resp);
 			
-				g_twitterObj.getLastWebResponse(resp);
+			apiCheckAndDisplayError();
+			
+			isValidPIN = (strncmp(resp.c_str(),"oauth",5) == 0);
+			
+			if(isValidPIN) {
+				ofstream newtoken(".nanotter");
 				
-				apiCheckAndDisplayError();
+				g_twitterObj.getOAuth().getOAuthTokenKey(token);
+				g_twitterObj.getOAuth().getOAuthTokenSecret(tokensecret);
 				
-				isValidPIN = (strncmp(resp.c_str(),"oauth",5) == 0);
-				
-				if(isValidPIN) {
-					ofstream newtoken(".nanotter");
-					
-					g_twitterObj.getOAuth().getOAuthTokenKey(token);
-					g_twitterObj.getOAuth().getOAuthTokenSecret(tokensecret);
-					
-					newtoken << token << endl;
-					newtoken << tokensecret << endl;
-				}
+				newtoken << token << endl;
+				newtoken << tokensecret << endl;
 			}
-		} else {
-			tokenfile >> token;
-			tokenfile >> tokensecret;
-			
-			g_twitterObj.getOAuth().setOAuthTokenKey(token);
-			g_twitterObj.getOAuth().setOAuthTokenSecret(tokensecret);
 		}
+	} else {
+		tokenfile >> token;
+		tokenfile >> tokensecret;
+		
+		g_twitterObj.getOAuth().setOAuthTokenKey(token);
+		g_twitterObj.getOAuth().setOAuthTokenSecret(tokensecret);
 	}
 	
-	g_twitterObj_Stream.getOAuth().setConsumerKey(g_strConsumerKey);
-	g_twitterObj_Stream.getOAuth().setConsumerSecret(g_strConsumerSecret);
-	g_twitterObj_Stream.getOAuth().setOAuthTokenKey(token);
-	g_twitterObj_Stream.getOAuth().setOAuthTokenSecret(tokensecret);
+	g_twitterObj_Stream = *g_twitterObj.clone();
 }
