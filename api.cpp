@@ -185,6 +185,8 @@ void apiOAuthTokenPIN()
 			
 			g_twitterObj.getOAuth().setOAuthPin(PIN);
 			
+			g_twitterObj.oAuthAccessToken();
+			
 			string resp;
 		
 			g_twitterObj.getLastWebResponse(resp);
